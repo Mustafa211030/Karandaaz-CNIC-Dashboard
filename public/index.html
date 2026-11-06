@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Karandaaz CNIC command center</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>tailwind.config={theme:{extend:{fontFamily:{display:['Sora','sans-serif'],sans:['Figtree','system-ui','sans-serif']},colors:{neon:{cy:'#38e8ff',mint:'#2de2b0',rose:'#ff5c86',amber:'#ffb547'}},keyframes:{rise:{'0%':{opacity:0,transform:'translateY(28px) rotateX(14deg) scale(.98)'},'100%':{opacity:1,transform:'none'}},float:{'0%,100%':{transform:'translate3d(0,0,0)'},'50%':{transform:'translate3d(50px,-34px,0)'}}},animation:{rise:'rise .9s cubic-bezier(.2,.8,.2,1) both',float:'float 20s ease-in-out infinite'}}}}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#e8edff;--mute:#8f9abf;--line:rgba(130,155,255,.16);--glass:rgba(14,20,46,.66);--cy:#38e8ff;--mint:#2de2b0;--rose:#ff5c86;--amber:#ffb547;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+body{margin:0;min-height:100%;color:var(--ink);font-family:Figtree,system-ui,sans-serif;background:#060913 radial-gradient(900px 500px at 8% -5%,rgba(56,232,255,.14),transparent 60%),radial-gradient(800px 500px at 100% 0,rgba(167,139,250,.13),transparent 60%);background-attachment:fixed}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:#060913;z-index:30}
+h1,h2,.num{font-family:Sora,Figtree,sans-serif}
+.glass{background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:18px}
+.chip{border-radius:8px}
+select,input[type=number]{background:rgba(8,12,30,.8);border:1px solid var(--line);border-radius:10px;color:var(--ink);padding:.4rem .55rem;font-size:.85rem;min-width:0;width:100%}
+select:focus-visible,input:focus-visible,button:focus-visible{outline:2px solid var(--cy);outline-offset:2px}
+.ch{width:100%}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+@media (prefers-reduced-motion:no-preference){.ring{transition:stroke-dashoffset .7s cubic-bezier(.2,.8,.2,1)}}
+.tilt{transform:perspective(800px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .18s ease-out,box-shadow .3s;position:relative}.tilt::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .25s;background:radial-gradient(260px circle at var(--mx,50%) var(--my,0%),rgba(56,232,255,.17),transparent 60%)}.tilt:hover::after{opacity:1}.tilt:hover{box-shadow:0 18px 50px -18px rgba(56,232,255,.45)}.ch canvas{display:block}@media (prefers-reduced-motion:reduce){.tilt{transform:none!important}}
+</style></head>
+<body>
+<div class="fixed -z-10 -top-32 -left-24 h-[420px] w-[420px] rounded-full bg-neon-cy/20 blur-3xl animate-float"></div><div class="fixed -z-10 bottom-0 -right-24 h-[460px] w-[460px] rounded-full bg-violet-500/20 blur-3xl animate-float" style="animation-delay:-10s"></div>
+<div id="dz" class="fixed inset-0 z-50 items-center justify-center text-xl font-semibold" style="display:none;background:rgba(6,9,19,.88)">Drop the Kobo export (.xlsx) to refresh the dashboard</div>
+<div class="wrap max-w-[1500px] mx-auto px-4 sm:px-6 pb-10">
+<header class="pt-6 pb-4 flex flex-wrap items-end justify-between gap-3">
+ <div><h1 class="text-2xl sm:text-3xl font-bold tracking-tight">Karandaaz CNIC command center</h1>
+ <p class="text-sm mt-1" style="color:var(--mute)">Treatment clusters: CNIC collection and verification</p></div>
+ <div class="text-right text-sm" style="color:var(--mute)"><div id="sum" class="text-[var(--ink)] font-semibold"></div><div>Data as of <span id="asof"></span></div><div class="mt-2 flex flex-wrap items-center justify-end gap-3 text-xs"><label class="flex items-center gap-1.5 cursor-pointer"><input id="uq" type="checkbox" checked>Count each respondent once</label><button id="rf" class="chip px-3 py-1.5 font-semibold" style="background:var(--cy);color:#04111a">Refresh now</button><label class="chip px-3 py-1.5 font-semibold cursor-pointer border" style="border-color:var(--line);color:var(--ink)">Load file instead<input id="fi" type="file" accept=".xlsx" class="sr-only"></label></div><div id="msg" class="text-xs mt-1">Connecting to Kobo…</div></div>
+</header>
+
+<section class="glass sticky z-20 mb-4 p-3 grid grid-cols-2 md:grid-cols-4 xl:grid-cols-9 gap-2 items-end" style="top:calc(env(safe-area-inset-top,0px) + 6px)">
+ <label class="text-xs" style="color:var(--mute)">Province<select id="fp"></select></label>
+ <label class="text-xs" style="color:var(--mute)">District<select id="fd"></select></label>
+ <label class="text-xs xl:col-span-2" style="color:var(--mute)">Treatment cluster<select id="fc"></select></label>
+ <label class="text-xs" style="color:var(--mute)">Area<select id="fa"><option value="">All areas</option><option>Urban</option><option>Rural</option></select></label>
+ <label class="text-xs" style="color:var(--mute)">Visit outcome<select id="fo"></select></label>
+ <label class="text-xs" style="color:var(--mute)">CNIC review<select id="fs"></select></label>
+ <div class="grid grid-cols-2 gap-2"><label class="text-xs" style="color:var(--mute)">From<select id="ff"></select></label><label class="text-xs" style="color:var(--mute)">To<select id="ft"></select></label></div>
+ <button id="rs" class="chip px-3 py-2 text-sm font-semibold col-span-2 md:col-span-1" style="background:var(--cy);color:#04111a">Reset filters</button>
+</section>
+
+<section id="kpis" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 mb-4"></section>
+
+<section class="grid grid-cols-1 xl:grid-cols-5 gap-4 mb-4">
+ <div class="glass p-4 xl:col-span-2"><h2 class="font-semibold">Cluster map</h2>
+  <p class="text-xs mb-1" style="color:var(--mute)">Bar height is entries recorded. Colour is CNIC yield against the implied target. Drag to rotate, click a bar to focus. Outline is schematic.</p>
+  <div class="text-xs mb-1"><span class="dot" style="background:var(--mint)"></span>On target <span class="dot ml-2" style="background:var(--amber)"></span>Within 25% <span class="dot ml-2" style="background:var(--rose)"></span>Behind</div>
+  <div id="map" class="ch relative overflow-hidden rounded-xl" style="height:480px;cursor:grab"></div></div>
+ <div class="glass p-4 xl:col-span-3"><h2 class="font-semibold">Entry flow</h2>
+  <p class="text-xs mb-1" style="color:var(--mute)">From every entry to its visit outcome, then to the CNIC review result. Click a stage to filter.</p>
+  <div id="sk" class="ch" style="height:480px"></div></div>
+</section>
+
+<section class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4">
+ <div class="glass p-4"><h2 class="font-semibold">Cluster by outcome</h2>
+  <p class="text-xs" style="color:var(--mute)">Colour is the share (visit outcomes of entries, review results of CNICs). Numbers are counts. Click a row to focus.</p>
+  <div id="hm" class="ch"></div></div>
+ <div class="glass p-4"><h2 class="font-semibold">Yield ranking</h2>
+  <p class="text-xs" style="color:var(--mute)">CNICs collected as a share of listed respondents, best first. Label shows collected/listed.</p>
+  <div id="rk" class="ch"></div></div>
+</section>
+
+<section class="glass p-4 mb-4"><div class="flex flex-wrap items-baseline justify-between gap-2"><h2 class="font-semibold">Data quality</h2><p id="dqs" class="text-xs" style="color:var(--mute)"></p></div>
+ <div id="dq" class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2 my-3"></div>
+ <p id="dqt" class="text-xs mb-1" style="color:var(--mute)"></p>
+ <div class="overflow-auto" style="max-height:260px"><table id="dqtb" class="w-full text-xs"></table></div></section>
+
+<section class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+ <div class="glass p-4 xl:col-span-2"><h2 class="font-semibold">Daily progress against target</h2>
+  <p class="text-xs" style="color:var(--mute)">Bars are entries submitted each day by outcome. The line is cumulative CNICs; the dashed line is the CNIC target.</p>
+  <div id="tl" class="ch" style="height:320px"></div></div>
+ <div class="glass p-4"><h2 class="font-semibold">Why CNICs failed review</h2>
+  <p class="text-xs" style="color:var(--mute)">Free-text reviewer notes grouped into reasons.</p>
+  <div id="rn" class="ch" style="height:320px"></div></div>
+</section>
+<p class="text-xs mt-4" style="color:var(--mute)">Listed respondents come from each cluster in the form. Rate targets are editable on each card and saved in this browser. Review notes containing “correct” count as correct; all other notes count as incorrect.</p>
+</div>
+<script>
+const PM={'1':'Khyber Pakhtunkhwa','2':'FATA','3':'Punjab','4':'Sindh','5':'Balochistan'},rv={Done:0,refused:1,not_available:2,moved:3,other:4};
+const hav=(a,b,c,d)=>{const r=Math.PI/180,x=Math.sin((c-a)*r/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin((d-b)*r/2)**2;return 12742*Math.asin(Math.sqrt(x))};
+function stat(res,n){if(res!=='Done')return[-1,-1];const s=String(n||'').trim();if(!s)return[2,-1];if(s==='Correct'||(/correct/i.test(s)&&!/not correct|incorrect/i.test(s)))return[0,-1];const l=s.toLowerCase();return[1,/floor|phone|paper|page|written|no picture|no cnic|picture of/.test(l)?0:/blur/.test(l)?1:/match|name/.test(l)?2:3]}
+function ingest(recs,cls){
+ const names=[...new Set(recs.map(r=>r[0]))].filter(n=>cls[n]),P=[...new Set(names.map(n=>cls[n][0]))].sort();
+ names.sort((a,b)=>{const x=cls[a],y=cls[b];return P.indexOf(x[0])-P.indexOf(y[0])||String(x[1]).localeCompare(y[1])||a.localeCompare(b)});
+ const DL=[];names.forEach(n=>{const k=cls[n][1]+'|'+cls[n][0];if(!DL.some(d=>d[2]==k))DL.push([cls[n][1],P.indexOf(cls[n][0]),k])});
+ const C=names.map(n=>{const c=cls[n];return[n,DL.findIndex(d=>d[2]==c[1]+'|'+c[0]),c[2],c[3],c[4],c[5]]}),ci=Object.fromEntries(names.map((n,i)=>[n,i]));
+ const Y=[...new Set(recs.map(r=>r[5].slice(0,10)))].sort();
+ const R=recs.filter(r=>r[0] in ci).map(r=>{const i=ci[r[0]],[s,g]=stat(r[1],r[2]),k=String(r[3]||'').replace(/\D/g,''),c=C[i];let f=0;
+  if(r[1]==='Done'){if(k.length!==13)f|=64;else{if(PM[k[0]]!==P[DL[c[1]][1]])f|=2;if(k[12]%2)f|=4}const p=r[8];if(!p)f|=16;else if(p<3)f|=32}
+  if(r[6]!=null&&c[4]!=null&&hav(+r[6],+r[7],c[4],c[5])>2)f|=8;
+  return[i,rv[r[1]]??4,s,g,Y.indexOf(r[5].slice(0,10)),i+'|'+r[4],Date.parse(r[5]),f,0,k.length===13?k.slice(0,5)+'-*******-'+k[12]:'',r[4],k]});
+ const b={},m={};
+ R.forEach(r=>{const o=b[r[5]];if(!o||(r[1]==0)>(o[1]==0)||((r[1]==0)==(o[1]==0)&&r[6]>=o[6]))b[r[5]]=r});
+ R.forEach(r=>{r[8]=b[r[5]]===r?1:0;if(r[11]&&r[1]==0)(m[r[11]]=m[r[11]]||new Set()).add(r[5])});
+ R.forEach(r=>{if(r[11]&&r[1]==0&&m[r[11]].size>1)r[7]|=1});
+ return{P,D:DL,C,R,Y,asof:(recs.map(r=>r[5]).sort().pop()||'2026-01-01T00:00').slice(0,16)}}
+let D={P:[],D:[],C:[],R:[],Y:['2026-01-01'],asof:'2026-01-01T00:00'};
+const OUT=['Gave CNIC','Refused','Not available','Moved / not found','Other'],OC=['#2de2b0','#ff5c86','#ffb547','#a78bfa','#64748b'];
+const ST=['Correct','Incorrect','Not yet reviewed'],SC=['#38e8ff','#ff5c86','#5b6590'];
+const RS=['No usable card photo','Blurry photo','Name mismatch','Wrong number'];
+const PK=[[61.6,25.1],[63.5,25.3],[66.7,25.4],[67.2,24.8],[68,23.8],[69.6,24.2],[70.2,25.7],[71,27.8],[72.9,29],[74.6,31],[74.7,32.4],[75.4,32.7],[74.5,34],[75.5,35],[76.5,35.8],[77.8,35.5],[75.2,37],[73.8,36.9],[71.5,36.9],[71.2,36],[71.5,34.9],[71.1,34.1],[69.9,33.1],[69.3,31.9],[68,31.7],[66.4,30.9],[66.3,29.8],[64.1,29.4],[61.6,29.5],[60.9,29.8],[61.6,27.2],[63.2,26.6]];
+const KD=[['cov','Respondent coverage','entries of listed respondents',1],['col','CNIC collection rate','CNICs of entries',1],['ref','Refusal rate','refusals of entries (lower is better)',0],['acc','CNIC accuracy','correct of reviewed CNICs',1],['rev','Review completion','reviewed of collected CNICs',1]];
+const $=id=>document.getElementById(id),fmt=n=>n.toLocaleString('en-US');
+let S={p:-1,d:-1,c:-1,a:'',o:-1,s:-1,f:0,t:D.Y.length-1,u:true,q:0},T={cov:100,col:85,ref:10,acc:95,rev:100},cur={cs:[]};
+try{Object.assign(T,JSON.parse(localStorage.getItem('cnicT')||'{}'))}catch(e){}
+const dl=y=>new Date(y+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+const cOK=i=>{const c=D.C[i];return(S.p<0||D.D[c[1]][1]==S.p)&&(S.d<0||c[1]==S.d)&&(S.c<0||i==S.c)&&(!S.a||c[2]==S.a)};
+const oOK=r=>(!S.u||r[8])&&(S.o<0||r[1]==S.o)&&(S.s<0||r[2]==S.s);
+const opt=(a,all)=>`<option value="-1">${all}</option>`+a.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+const ch={};['sk','hm','rk','tl','rn'].forEach(k=>ch[k]=echarts.init($(k)));
+const base={textStyle:{fontFamily:'Figtree,system-ui,sans-serif',color:'#aab4d8'},tooltip:{backgroundColor:'rgba(8,12,30,.95)',borderColor:'rgba(130,155,255,.3)',textStyle:{color:'#e8edff'}}};
+const ax={axisLine:{lineStyle:{color:'rgba(130,155,255,.25)'}},splitLine:{lineStyle:{color:'rgba(130,155,255,.1)'}},axisLabel:{color:'#8f9abf'}};
+const KC=$('kpis');
+KD.forEach(([k,l,s])=>KC.insertAdjacentHTML('beforeend',`<div class="glass tilt p-4"><div class="flex items-center gap-3"><svg width="68" height="68" viewBox="0 0 44 44" class="shrink-0"><circle cx="22" cy="22" r="18" fill="none" stroke="rgba(130,155,255,.15)" stroke-width="5"/><circle id="r_${k}" class="ring" cx="22" cy="22" r="18" fill="none" stroke-width="5" stroke-linecap="round" stroke-dasharray="113.1" stroke-dashoffset="113.1" transform="rotate(-90 22 22)"/><line id="t_${k}" x1="22" y1="0.5" x2="22" y2="8" stroke="#fff" stroke-width="1.6"/></svg><div class="min-w-0"><div class="text-sm" style="color:var(--mute)">${l}</div><div id="v_${k}" class="num text-3xl font-bold leading-tight"></div></div></div><div id="n_${k}" class="text-xs mt-2" style="color:var(--mute)"></div><div class="flex items-center justify-between gap-2 mt-2"><span id="d_${k}" class="chip text-xs font-semibold px-2 py-1"></span><label class="text-xs flex items-center gap-1" style="color:var(--mute)">Target %<input id="i_${k}" type="number" min="0" max="100" step="1" value="${T[k]}" style="width:4.2rem"></label></div></div>`));
+KD.forEach(([k])=>$('i_'+k).addEventListener('input',e=>{T[k]=Math.max(0,Math.min(100,+e.target.value||0));try{localStorage.setItem('cnicT',JSON.stringify(T))}catch(x){}draw()}));
+function sync(){
+ const pr=D.P.map((p,i)=>[i,p]);
+ const ds=D.D.map((d,i)=>[i,d[0],d[1]]).filter(d=>S.p<0||d[2]==S.p).map(d=>[d[0],d[1]]);
+ const cl=D.C.map((c,i)=>[i,c[0],c[1]]).filter(c=>(S.p<0||D.D[c[2]][1]==S.p)&&(S.d<0||c[2]==S.d)).map(c=>[c[0],c[1]]);
+ $('fp').innerHTML=opt(pr,'All provinces');$('fd').innerHTML=opt(ds,'All districts');$('fc').innerHTML=opt(cl,'All clusters');
+ $('fo').innerHTML=opt(OUT.map((o,i)=>[i,o]),'All outcomes');$('fs').innerHTML=opt(ST.map((o,i)=>[i,o]),'All review results');
+ const dy=D.Y.map((y,i)=>[i,dl(y)]);$('ff').innerHTML=opt(dy,dl(D.Y[0])).replace('value="-1"','value="0"');$('ft').innerHTML=dy.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+ $('fp').value=S.p;$('fd').value=S.d;$('fc').value=S.c;$('fa').value=S.a;$('fo').value=S.o;$('fs').value=S.s;$('ff').value=S.f;$('ft').value=S.t;$('uq').checked=S.u;
+ draw();
+}
+const num=e=>+e.target.value;
+$('fp').onchange=e=>{S.p=num(e);S.d=-1;S.c=-1;sync()};$('fd').onchange=e=>{S.d=num(e);S.c=-1;if(S.d>=0)S.p=D.D[S.d][1];sync()};
+$('fc').onchange=e=>{S.c=num(e);if(S.c>=0){S.d=D.C[S.c][1];S.p=D.D[S.d][1]}sync()};
+$('fa').onchange=e=>{S.a=e.target.value;sync()};$('fo').onchange=e=>{S.o=num(e);sync()};$('fs').onchange=e=>{S.s=num(e);sync()};
+$('ff').onchange=e=>{S.f=num(e);if(S.t<S.f)S.t=S.f;sync()};$('ft').onchange=e=>{S.t=num(e);if(S.f>S.t)S.f=S.t;sync()};
+$('rs').onclick=()=>{S={p:-1,d:-1,c:-1,a:'',o:-1,s:-1,f:0,t:D.Y.length-1,u:S.u,q:0};sync()};
+const pick=i=>{if(i==null)return;if(S.c===i)S.c=-1;else{S.c=i;S.d=D.C[i][1];S.p=D.D[S.d][1]}sync()};
+function draw(){
+ const inD=r=>r[4]>=S.f&&r[4]<=S.t,pc=D.C.map(()=>({n:0,c:[0,0,0,0,0],s:[0,0,0]}));
+ D.R.filter(r=>oOK(r)&&inD(r)).forEach(r=>{const p=pc[r[0]];p.n++;p.c[r[1]]++;if(r[2]>=0)p.s[r[2]]++});
+ const cs=D.C.map((c,i)=>i).filter(cOK);cur.cs=cs;
+ const L=cs.reduce((a,i)=>a+D.C[i][3],0),n=cs.reduce((a,i)=>a+pc[i].n,0);
+ const c=[0,0,0,0,0],s=[0,0,0];cs.forEach(i=>{pc[i].c.forEach((v,k)=>c[k]+=v);pc[i].s.forEach((v,k)=>s[k]+=v)});
+ const val={cov:[n,L],col:[c[0],n],ref:[c[1],n],acc:[s[0],s[0]+s[1]],rev:[s[0]+s[1],c[0]]};
+ KD.forEach(([k,,sub,hi])=>{const[a,b]=val[k],v=b?a/b*100:0,g=hi?v-T[k]:T[k]-v,co=!b?'#5b6590':g>=0?'#2de2b0':g>-10?'#ffb547':'#ff5c86';
+  b?cnt($('v_'+k),v):($('v_'+k).textContent='n/a');$('n_'+k).textContent=`${fmt(a)} of ${fmt(b)} ${sub}`;
+  const r=$('r_'+k);r.style.stroke=co;r.style.strokeDashoffset=113.1*(1-Math.min(v,100)/100);$('t_'+k).setAttribute('transform',`rotate(${T[k]*3.6} 22 22)`);
+  const d=$('d_'+k);d.textContent=!b?'No data':(g>=0?'▲ ':'▼ ')+Math.abs(g).toFixed(1)+' pts '+(g>=0?'ahead':'behind');d.style.cssText=`background:${co}22;color:${co}`});
+ $('sum').textContent=`${fmt(n)} ${S.u?'respondents':'entries'}, ${fmt(c[0])} CNICs, ${cs.length} clusters`;$('asof').textContent=new Date(D.asof.replace(' ','T')).toLocaleString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+ const tg=T.cov*T.col/100,col=v=>v>=tg?'#2de2b0':v>=tg*.75?'#ffb547':'#ff5c86',yl=i=>pc[i].c[0]/D.C[i][3]*100;
+ map3d(cs,pc,tg,col,yl);
+ /* sankey */
+ const nd=[{name:'Entries',itemStyle:{color:'#8f9abf'}},...OUT.map((o,i)=>({name:o,itemStyle:{color:OC[i]}})),...ST.map((o,i)=>({name:o,itemStyle:{color:SC[i]}}))];
+ const lk=[...OUT.map((o,i)=>['Entries',o,c[i]]),...ST.map((o,i)=>['Gave CNIC',o,s[i]])].filter(l=>l[2]>0).map(l=>({source:l[0],target:l[1],value:l[2]}));
+ ch.sk.setOption({...base,tooltip:{...base.tooltip,trigger:'item'},series:[{type:'sankey',left:8,right:110,top:10,bottom:10,nodeGap:14,nodeWidth:16,data:nd,links:lk,draggable:false,lineStyle:{color:'gradient',opacity:.42,curveness:.5},label:{color:'#e8edff',fontSize:12,formatter:q=>`${q.name}  ${fmt(q.value)}`},emphasis:{focus:'adjacency'}}]},true);
+ /* heatmap + ranking */
+ const h=Math.max(280,cs.length*22+70);$('hm').style.height=$('rk').style.height=h+'px';ch.hm.resize();ch.rk.resize();
+ const hx=['CNIC','Refused','Not avail.','Moved','Other','Correct','Incorrect','Unreviewed'],hd=[];
+ cs.forEach((i,y)=>{const p=pc[i];hx.forEach((_,x)=>{const k=x<5?p.c[x]:p.s[x-5],den=x<5?p.n:p.c[0];hd.push([x,y,den?Math.round(k/den*100):0,k])})});
+ ch.hm.setOption({...base,grid:{left:190,right:10,top:34,bottom:6},tooltip:{...base.tooltip,formatter:q=>`<b>${D.C[cs[q.value[1]]][0]}</b><br>${hx[q.value[0]]}: ${q.value[3]} (${q.value[2]}%)`},
+  xAxis:{type:'category',data:hx,position:'top',splitArea:{show:false},axisTick:{show:false},axisLine:{show:false},axisLabel:{color:'#aab4d8',fontSize:10,interval:0}},
+  yAxis:{type:'category',data:cs.map(i=>D.C[i][0]),inverse:true,axisTick:{show:false},axisLine:{show:false},axisLabel:{width:180,overflow:'truncate',fontSize:10,color:'#aab4d8'}},
+  visualMap:{show:false,min:0,max:100,inRange:{color:['#0d1431','#25368a','#38e8ff','#2de2b0']}},
+  series:[{type:'heatmap',data:hd,label:{show:true,fontSize:10,color:'#fff',formatter:q=>q.value[3]||''},itemStyle:{borderColor:'#060913',borderWidth:2,borderRadius:3}}]},true);
+ const rk=cs.map(i=>({i,v:yl(i)})).sort((a,b)=>b.v-a.v);
+ ch.rk.setOption({...base,grid:{left:190,right:56,top:22,bottom:6},tooltip:{...base.tooltip,formatter:q=>`<b>${D.C[q.data.i][0]}</b><br>${pc[q.data.i].c[0]} of ${D.C[q.data.i][3]} listed (${q.value}%)`},
+  xAxis:{type:'value',...ax,max:v=>Math.max(100,Math.ceil(v.max/10)*10),axisLabel:{color:'#8f9abf',formatter:'{value}%'}},
+  yAxis:{type:'category',inverse:true,data:rk.map(x=>D.C[x.i][0]),axisLine:ax.axisLine,axisTick:{show:false},axisLabel:{width:180,overflow:'truncate',fontSize:10,color:'#aab4d8'}},
+  series:[{type:'bar',barWidth:11,data:rk.map(x=>({i:x.i,value:+x.v.toFixed(1),itemStyle:{color:col(x.v),borderRadius:[0,6,6,0]}})),label:{show:true,position:'right',color:'#aab4d8',fontSize:10,formatter:q=>`${pc[q.data.i].c[0]}/${D.C[q.data.i][3]}`},
+   markLine:{symbol:'none',silent:true,lineStyle:{color:'#fff',type:'dashed'},label:{formatter:'target '+tg.toFixed(0)+'%',color:'#fff',fontSize:10},data:[{xAxis:+tg.toFixed(1)}]}}]},true);
+ /* timeline + reasons */
+ const dm=D.Y.map(()=>[0,0,0,0,0]),rs=[0,0,0,0];
+ D.R.forEach(r=>{if(!cs.includes(r[0])||!oOK(r))return;dm[r[4]][r[1]]++;if(inD(r)&&r[2]==1)rs[r[3]]++});
+ let cum=0;const cl=dm.map(d=>cum+=d[0]),tt=Math.round(L*tg/100);
+ ch.tl.setOption({...base,tooltip:{...base.tooltip,trigger:'axis'},legend:{top:0,textStyle:{color:'#aab4d8'},itemWidth:10,itemHeight:10},grid:{left:44,right:24,top:36,bottom:24},
+  xAxis:{type:'category',data:D.Y.map(dl),...ax},yAxis:{type:'value',...ax,max:v=>Math.max(tt*1.1,v.max)},
+  series:[...OUT.map((o,i)=>({name:o,type:'bar',stack:'d',barWidth:'38%',data:dm.map(d=>d[i]),itemStyle:{color:OC[i],opacity:.75}})),
+  {name:'Cumulative CNICs',type:'line',data:cl,smooth:true,symbolSize:8,lineStyle:{width:3,color:'#38e8ff',shadowBlur:12,shadowColor:'#38e8ff'},itemStyle:{color:'#38e8ff'},
+   markLine:{symbol:'none',silent:true,lineStyle:{color:'#fff',type:'dashed'},label:{formatter:'CNIC target '+fmt(tt),color:'#fff',position:'insideEndTop'},data:[{yAxis:tt}]}}]},true);
+ ch.rn.setOption({...base,grid:{left:130,right:34,top:10,bottom:10},xAxis:{type:'value',...ax,show:false},yAxis:{type:'category',inverse:true,data:RS,axisLine:ax.axisLine,axisTick:{show:false},axisLabel:{color:'#aab4d8',width:120,overflow:'truncate'}},
+  series:[{type:'bar',barWidth:16,data:rs,itemStyle:{color:'#ff5c86',borderRadius:[0,6,6,0]},label:{show:true,position:'right',color:'#e8edff'}}]},true);
+ dq(inD);
+}
+ch.rk.on('click',q=>pick(q.data.i));ch.hm.on('click',q=>pick(cur.cs[q.value[1]]));
+ch.sk.on('click',q=>{if(q.dataType!=='node')return;const k=OUT.indexOf(q.name),j=ST.indexOf(q.name);if(k>=0)S.o=S.o===k?-1:k;else if(j>=0)S.s=S.s===j?-1:j;sync()});
+addEventListener('resize',()=>Object.values(ch).forEach(c=>c.resize()));
+const FL=[[1,'Repeated CNIC'],[2,'Province mismatch'],[4,'Male format'],[8,'GPS over 2 km'],[16,'No photos'],[32,'One side only'],[64,'Bad length']],bc=n=>n.toString(2).replace(/0/g,'').length;
+function dq(inD){
+ const all=D.R.filter(r=>cOK(r[0])&&inD(r)),uq=all.filter(r=>r[8]).length,sc=all.filter(oOK),dn=sc.filter(r=>r[1]==0).length;
+ $('dqs').textContent=`${fmt(all.length)} entries from ${fmt(uq)} unique respondents. ${fmt(all.length-uq)} repeat entries are ${S.u?'removed from every figure (best entry kept)':'still counted'}.`;
+ $('dq').innerHTML=FL.map(([b,l])=>{const n=sc.filter(r=>r[7]&b).length,den=b==8?sc.length:dn;return`<button data-q="${b}" class="chip tilt text-left p-2 border" style="border-color:${S.q===b?'#38e8ff':'var(--line)'};background:${n?'rgba(255,92,134,.10)':'rgba(45,226,176,.08)'}"><div class="num text-xl font-bold">${fmt(n)}</div><div class="text-xs">${l}</div><div class="text-[11px]" style="color:var(--mute)">${den?(n/den*100).toFixed(1):0}% of ${b==8?'entries':'CNICs'}</div></button>`}).join('');
+ const fl=sc.filter(r=>S.q?r[7]&S.q:r[7]).sort((a,b)=>bc(b[7])-bc(a[7])||a[0]-b[0]);
+ $('dqt').textContent=`${fmt(fl.length)} flagged records${fl.length>150?' (first 150 shown)':''}. Click a card to narrow the list, or a row to focus its cluster.`;
+ $('dqtb').innerHTML='<tr class="text-left" style="color:var(--mute)"><th class="py-1">Cluster</th><th>Resp #</th><th>Day</th><th>CNIC</th><th>Flags</th></tr>'+fl.slice(0,150).map(r=>`<tr data-i="${r[0]}" class="cursor-pointer border-t" style="border-color:var(--line)"><td class="py-1">${D.C[r[0]][0]}</td><td>${r[10]}</td><td>${dl(D.Y[r[4]])}</td><td>${r[9]||'–'}</td><td>${FL.filter(f=>r[7]&f[0]).map(f=>f[1]).join(', ')}</td></tr>`).join('');
+}
+$('dq').onclick=e=>{const b=e.target.closest('button');if(b){const q=+b.dataset.q;S.q=S.q===q?0:q;draw()}};
+$('dqtb').onclick=e=>{const r=e.target.closest('tr[data-i]');if(r)pick(+r.dataset.i)};
+$('uq').onchange=e=>{S.u=e.target.checked;sync()};
+async function load(file){
+ try{
+  const wb=XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:true}),ws=wb.Sheets.resp_rep;if(!ws)throw new Error('no resp_rep sheet in this file');
+  const rows=XLSX.utils.sheet_to_json(ws,{defval:null}),cn=Object.keys(rows[0]||{}).find(k=>k.startsWith('CNIC number of')),p=n=>String(n).padStart(2,'0');
+  const iso=v=>v instanceof Date?`${v.getFullYear()}-${p(v.getMonth()+1)}-${p(v.getDate())}T${p(v.getHours())}:${p(v.getMinutes())}:${p(v.getSeconds())}`:String(v||'').replace(' ','T'),cls={},fs=wb.SheetNames.find(n=>!['Dashboard','resp_rep','Lists'].includes(n));
+  if(fs)XLSX.utils.sheet_to_json(wb.Sheets[fs],{defval:null}).forEach(r=>{const n=r['Treatment cluster'];if(n&&!cls[n])cls[n]=[r.Province,r.District,r.cl_area,+r.cl_n_resp||35,+r.cl_cluster_lat||null,+r.cl_cluster_lon||null]});
+  rows.forEach(r=>{const n=r['Treatment cluster'];if(n&&!cls[n])cls[n]=[r.Province,r.District,r.cl_area,35,null,null]});
+  const recs=rows.filter(r=>r['Treatment cluster']&&r.r_result&&r._submission__submission_time).map(r=>[r['Treatment cluster'],r.r_result,r.CNIC_review_note,cn?r[cn]:'',r.resp_no,iso(r._submission__submission_time),r.resp_lat,r.resp_lon,(r['Front side_URL']?1:0)+(r['Back side_URL']?2:0)]);
+  if(!recs.length)throw new Error('no usable rows found');
+  D=ingest(recs,cls);S={p:-1,d:-1,c:-1,a:'',o:-1,s:-1,f:0,t:D.Y.length-1,u:S.u,q:0};sync();clearInterval(poll);$('msg').textContent=`Loaded ${fmt(recs.length)} entries from ${file.name} (live sync paused)`;
+ }catch(e){$('msg').textContent='Could not read the file: '+e.message}
+}
+$('fi').onchange=e=>e.target.files[0]&&load(e.target.files[0]);
+addEventListener('dragover',e=>{e.preventDefault();$('dz').style.display='flex'});
+addEventListener('dragleave',e=>{if(!e.relatedTarget)$('dz').style.display='none'});
+addEventListener('drop',e=>{e.preventDefault();$('dz').style.display='none';const f=e.dataTransfer.files[0];if(f)load(f)});
+const X3=lo=>(lo-68.8)*.62,Y3=la=>(la-30.3)*.7;let M=null,poll,pass='';
+function cnt(el,to){const from=el._v||0,t0=performance.now();el._v=to;(function f(t){const k=Math.min(1,(t-t0)/700);el.textContent=(from+(to-from)*(1-Math.pow(1-k,3))).toFixed(1)+'%';if(k<1)requestAnimationFrame(f)})(t0)}
+function lab3(T3,txt){const c=document.createElement('canvas');c.width=256;c.height=64;const x=c.getContext('2d');x.font='600 26px Figtree,sans-serif';x.fillStyle='#cfd7ff';x.textAlign='center';x.fillText(txt,128,40);const p=new T3.Sprite(new T3.SpriteMaterial({map:new T3.CanvasTexture(c),transparent:true,depthTest:false}));p.scale.set(1.7,.42,1);return p}
+function map3d(cs,pc,tg,col,yl){
+ if(!window.THREE||!D.C.length)return;
+ const T3=THREE,el=$('map');
+ if(!M){
+  const r=new T3.WebGLRenderer({antialias:true,alpha:true}),s=new T3.Scene(),cam=new T3.PerspectiveCamera(38,1,.1,100),g=new T3.Group(),d=r.domElement,tp=document.createElement('div');
+  r.setPixelRatio(Math.min(devicePixelRatio,2));el.appendChild(d);d.style.touchAction='pan-y';
+  tp.className='pointer-events-none absolute z-10 chip px-2 py-1 text-xs';tp.style.cssText='display:none;background:rgba(8,12,30,.95);border:1px solid rgba(130,155,255,.3)';el.appendChild(tp);
+  const dl=new T3.DirectionalLight(0xffffff,.95);dl.position.set(5,9,6);s.add(g,new T3.AmbientLight(0x9aa8ff,.75),dl);
+  const gr=new T3.GridHelper(16,32,0x2a3a7a,0x141c44);gr.position.y=-.03;s.add(gr);
+  const geo=new T3.ExtrudeGeometry(new T3.Shape(PK.map(q=>new T3.Vector2(X3(q[0]),Y3(q[1])))),{depth:.14,bevelEnabled:false}),
+   land=new T3.Mesh(geo,new T3.MeshStandardMaterial({color:0x101a44,metalness:.3,roughness:.55,transparent:true,opacity:.92})),
+   ed=new T3.LineSegments(new T3.EdgesGeometry(geo),new T3.LineBasicMaterial({color:0x38e8ff,transparent:true,opacity:.7}));
+  land.rotation.x=ed.rotation.x=-Math.PI/2;s.add(land,ed);
+  M={T3,r,s,cam,g,tp,yaw:0,pit:.95,R:15.5,bars:[],lbs:[],cyl:new T3.CylinderGeometry(.13,.13,1,16),ray:new T3.Raycaster(),mv:new T3.Vector2(9,9),hov:-1,drag:null,idle:0,vis:true,key:'',px:0,py:0};
+  M.tip=()=>{const i=M.hov;if(i<0){tp.style.display='none';return}const c=D.C[i],p=M.pc[i];tp.style.display='block';tp.innerHTML=`<b>${c[0]}</b><br>Entries ${p.n} · CNICs ${p.c[0]} of ${c[3]} listed<br>Yield ${M.yl(i).toFixed(1)}% vs ${M.tg.toFixed(1)}% target`};
+  d.addEventListener('pointerdown',e=>{M.drag={x:e.clientX,y:e.clientY,yaw:M.yaw,pit:M.pit,mv:0};d.setPointerCapture(e.pointerId);el.style.cursor='grabbing'});
+  d.addEventListener('pointermove',e=>{const b=d.getBoundingClientRect();M.px=e.clientX-b.left;M.py=e.clientY-b.top;M.mv.set(M.px/b.width*2-1,-M.py/b.height*2+1);M.idle=performance.now();
+   if(M.drag){const dx=e.clientX-M.drag.x,dy=e.clientY-M.drag.y;M.drag.mv=Math.max(M.drag.mv,Math.abs(dx)+Math.abs(dy));M.yaw=M.drag.yaw-dx*.006;M.pit=Math.max(.35,Math.min(1.45,M.drag.pit+dy*.005))}});
+  d.addEventListener('pointerup',()=>{if(M.drag&&M.drag.mv<5&&M.hov>=0)pick(M.hov);M.drag=null;el.style.cursor='grab'});
+  d.addEventListener('pointerleave',()=>{M.hov=-1;M.mv.set(9,9);M.tip()});
+  new ResizeObserver(()=>{const w=el.clientWidth,h=el.clientHeight;if(!w||!h)return;r.setSize(w,h);cam.aspect=w/h;cam.updateProjectionMatrix();M.R=w<520?20:15.5}).observe(el);
+  new IntersectionObserver(([e])=>M.vis=e.isIntersecting).observe(el);
+  const clk=new T3.Clock(),calm=matchMedia('(prefers-reduced-motion:reduce)').matches;
+  (function loop(){requestAnimationFrame(loop);if(!M.vis)return;const t=clk.getElapsedTime(),idle=!calm&&!M.drag&&performance.now()-M.idle>2500,yaw=M.yaw+(idle?Math.sin(t*.25)*.28:0);
+   cam.position.set(Math.sin(yaw)*Math.cos(M.pit)*M.R,Math.sin(M.pit)*M.R,Math.cos(yaw)*Math.cos(M.pit)*M.R);cam.lookAt(0,.2,0);
+   M.ray.setFromCamera(M.mv,cam);const hit=M.ray.intersectObjects(M.bars)[0],hi=hit?hit.object.userData.i:-1;if(hi!==M.hov){M.hov=hi;M.tip()}
+   if(M.hov>=0){tp.style.left=Math.min(M.px+14,el.clientWidth-230)+'px';tp.style.top=M.py+14+'px'}
+   M.bars.forEach(b=>{const u=b.userData,hv=u.i===M.hov||u.i===S.c;u.cur+=(u.h-u.cur)*.1;b.scale.set(hv?1.5:1,Math.max(.02,u.cur),hv?1.5:1);b.position.y=.14+u.cur/2;b.material.emissiveIntensity=hv?.95:.35+Math.sin(t*2+u.i)*.08;b.material.opacity=u.on?.95:.14});
+   r.render(s,cam)})();
+ }
+ const key=D.C.map(c=>c[0]).join('|');
+ if(M.key!==key){M.key=key;M.bars.forEach(b=>{M.g.remove(b);b.material.dispose()});M.lbs.forEach(l=>M.g.remove(l));
+  M.bars=D.C.map((c,i)=>{const b=new T3.Mesh(M.cyl,new T3.MeshStandardMaterial({color:0x2de2b0,emissive:0x2de2b0,transparent:true,roughness:.35,metalness:.2}));b.userData={i,h:.1,cur:.02,on:true};b.visible=c[4]!=null;b.position.x=X3(c[5]);b.position.z=-Y3(c[4]);M.g.add(b);return b});
+  M.lbs=D.D.map((d,j)=>{const m=D.C.filter(x=>x[1]==j&&x[4]!=null),sp=lab3(T3,d[0]);sp.position.set(X3(m.reduce((a,x)=>a+x[5],0)/(m.length||1)),.5,-Y3(m.reduce((a,x)=>a+x[4],0)/(m.length||1))+.5);M.g.add(sp);return sp})}
+ M.pc=pc;M.tg=tg;M.yl=yl;
+ M.bars.forEach(b=>{const i=b.userData.i,c=col(yl(i));b.userData.h=.12+pc[i].n/36*1.7;b.userData.on=cs.includes(i);b.material.color.set(c);b.material.emissive.set(c)});
+}
+document.addEventListener('pointermove',e=>{const c=e.target.closest&&e.target.closest('.tilt');if(!c)return;const b=c.getBoundingClientRect(),x=(e.clientX-b.left)/b.width-.5,y=(e.clientY-b.top)/b.height-.5;c.style.setProperty('--ry',x*9+'deg');c.style.setProperty('--rx',-y*9+'deg');c.style.setProperty('--mx',(x+.5)*100+'%');c.style.setProperty('--my',(y+.5)*100+'%')});
+document.addEventListener('pointerout',e=>{const c=e.target.closest&&e.target.closest('.tilt');if(c){c.style.setProperty('--rx','0deg');c.style.setProperty('--ry','0deg')}});
+try{pass=sessionStorage.getItem('pc')||''}catch(e){}
+async function live(){
+ try{
+  const r=await fetch('/api/data',{headers:pass?{'x-passcode':pass}:{}});
+  if(r.status===401){pass=prompt('Dashboard passcode')||'';try{sessionStorage.setItem('pc',pass)}catch(e){}return pass?live():($('msg').textContent='Passcode required. Click Refresh now to enter it.')}
+  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'HTTP '+r.status);if(!j.recs.length)throw new Error('Kobo returned no respondent rows yet');
+  const end=S.t>=D.Y.length-1;D=ingest(j.recs,j.cls);if(end||S.t>=D.Y.length)S.t=D.Y.length-1;if(S.f>=D.Y.length)S.f=0;if(S.c>=D.C.length)S.c=-1;
+  sync();$('msg').innerHTML=`<span class="inline-block w-2 h-2 rounded-full bg-neon-mint animate-pulse mr-1.5"></span>Live from Kobo · ${fmt(j.recs.length)} entries · synced ${new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}`;
+ }catch(e){$('msg').textContent='Live sync failed: '+e.message+'. You can still drop an export file on this page.'}
+}
+$('rf').onclick=()=>live();
+document.querySelectorAll('.wrap>section').forEach((s,i)=>{s.style.animationDelay=i*80+'ms';s.classList.add('animate-rise')});
+live();poll=setInterval(()=>{if(!document.hidden)live()},60000);
+</script></body></html>
