@@ -29,11 +29,11 @@ select:focus-visible,input:focus-visible,button:focus-visible{outline:2px solid 
 <div class="wrap max-w-[1500px] mx-auto px-4 sm:px-6 pb-10">
 <header class="pt-6 pb-4 flex flex-wrap items-end justify-between gap-3">
  <div><h1 class="text-2xl sm:text-3xl font-bold tracking-tight">Karandaaz CNIC command center</h1>
- <p class="text-sm mt-1" style="color:var(--mute)">Treatment clusters: CNIC collection and verification</p></div>
+ <p class="text-sm mt-1" style="color:var(--mute)">Target 1,860 CNICs: 35 per cluster, 6 clusters and 210 per district</p></div>
  <div class="text-right text-sm" style="color:var(--mute)"><div id="sum" class="text-[var(--ink)] font-semibold"></div><div>Data as of <span id="asof"></span></div><div class="mt-2 flex flex-wrap items-center justify-end gap-3 text-xs"><label class="flex items-center gap-1.5 cursor-pointer"><input id="uq" type="checkbox" checked>Count each respondent once</label><button id="rf" class="chip px-3 py-1.5 font-semibold" style="background:var(--cy);color:#04111a">Refresh now</button><label class="chip px-3 py-1.5 font-semibold cursor-pointer border" style="border-color:var(--line);color:var(--ink)">Load file instead<input id="fi" type="file" accept=".xlsx" class="sr-only"></label></div><div id="msg" class="text-xs mt-1">Connecting to Kobo…</div></div>
 </header>
 
-<section class="glass sticky z-20 mb-4 p-3 grid grid-cols-2 md:grid-cols-4 xl:grid-cols-9 gap-2 items-end" style="top:calc(env(safe-area-inset-top,0px) + 6px)">
+<section class="glass sticky z-20 mb-4 p-3 grid grid-cols-2 md:grid-cols-4 xl:grid-cols-10 gap-2 items-end" style="top:calc(env(safe-area-inset-top,0px) + 6px)">
  <label class="text-xs" style="color:var(--mute)">Province<select id="fp"></select></label>
  <label class="text-xs" style="color:var(--mute)">District<select id="fd"></select></label>
  <label class="text-xs xl:col-span-2" style="color:var(--mute)">Treatment cluster<select id="fc"></select></label>
@@ -41,9 +41,13 @@ select:focus-visible,input:focus-visible,button:focus-visible{outline:2px solid 
  <label class="text-xs" style="color:var(--mute)">Visit outcome<select id="fo"></select></label>
  <label class="text-xs" style="color:var(--mute)">CNIC review<select id="fs"></select></label>
  <div class="grid grid-cols-2 gap-2"><label class="text-xs" style="color:var(--mute)">From<select id="ff"></select></label><label class="text-xs" style="color:var(--mute)">To<select id="ft"></select></label></div>
+ <label class="text-xs" style="color:var(--mute)">Target progress<select id="fg"><option value="0">All clusters</option><option value="1">Under 50% of target</option><option value="2">50% to 99%</option><option value="3">Target met</option></select></label>
  <button id="rs" class="chip px-3 py-2 text-sm font-semibold col-span-2 md:col-span-1" style="background:var(--cy);color:#04111a">Reset filters</button>
 </section>
 
+<section class="glass tilt p-4 mb-4"><div class="flex flex-wrap items-end justify-between gap-2"><div><h2 class="font-semibold">Progress against target</h2><p id="hp" class="text-xs" style="color:var(--mute)"></p></div><div class="num text-3xl font-bold"><span id="hv"></span><span class="text-base font-normal" style="color:var(--mute)"> of <span id="ht"></span> CNICs</span></div></div>
+ <div class="h-3 rounded-full mt-3 overflow-hidden" style="background:rgba(130,155,255,.15)"><div id="hb" class="h-full rounded-full" style="width:0;transition:width .9s cubic-bezier(.2,.8,.2,1);background:linear-gradient(90deg,#38e8ff,#2de2b0);box-shadow:0 0 18px #38e8ff"></div></div>
+ <div id="hd" class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2 mt-4"></div></section>
 <section id="kpis" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 mb-4"></section>
 
 <section class="grid grid-cols-1 xl:grid-cols-5 gap-4 mb-4">
@@ -61,7 +65,7 @@ select:focus-visible,input:focus-visible,button:focus-visible{outline:2px solid 
   <p class="text-xs" style="color:var(--mute)">Colour is the share (visit outcomes of entries, review results of CNICs). Numbers are counts. Click a row to focus.</p>
   <div id="hm" class="ch"></div></div>
  <div class="glass p-4"><h2 class="font-semibold">Yield ranking</h2>
-  <p class="text-xs" style="color:var(--mute)">CNICs collected as a share of listed respondents, best first. Label shows collected/listed.</p>
+  <p class="text-xs" style="color:var(--mute)">CNICs collected as a share of the 35 per cluster target, best first. Label shows collected/target.</p>
   <div id="rk" class="ch"></div></div>
 </section>
 
@@ -78,9 +82,10 @@ select:focus-visible,input:focus-visible,button:focus-visible{outline:2px solid 
   <p class="text-xs" style="color:var(--mute)">Free-text reviewer notes grouped into reasons.</p>
   <div id="rn" class="ch" style="height:320px"></div></div>
 </section>
-<p class="text-xs mt-4" style="color:var(--mute)">Listed respondents come from each cluster in the form. Rate targets are editable on each card and saved in this browser. Review notes containing “correct” count as correct; all other notes count as incorrect.</p>
+<p class="text-xs mt-4" style="color:var(--mute)">Targets are 35 per cluster, 210 per district (6 clusters) and 1,860 overall. Rate targets are editable on each card and saved in this browser. Review notes containing “correct” count as correct; all other notes count as incorrect.</p>
 </div>
 <script>
+const CFG={cluster:35,clustersPerDistrict:6,project:1860,pollSec:30};CFG.district=CFG.cluster*CFG.clustersPerDistrict;
 const PM={'1':'Khyber Pakhtunkhwa','2':'FATA','3':'Punjab','4':'Sindh','5':'Balochistan'},rv={Done:0,refused:1,not_available:2,moved:3,other:4};
 const hav=(a,b,c,d)=>{const r=Math.PI/180,x=Math.sin((c-a)*r/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin((d-b)*r/2)**2;return 12742*Math.asin(Math.sqrt(x))};
 function stat(res,n){if(res!=='Done')return[-1,-1];const s=String(n||'').trim();if(!s)return[2,-1];if(s==='Correct'||(/correct/i.test(s)&&!/not correct|incorrect/i.test(s)))return[0,-1];const l=s.toLowerCase();return[1,/floor|phone|paper|page|written|no picture|no cnic|picture of/.test(l)?0:/blur/.test(l)?1:/match|name/.test(l)?2:3]}
@@ -88,7 +93,7 @@ function ingest(recs,cls){
  const names=[...new Set(recs.map(r=>r[0]))].filter(n=>cls[n]),P=[...new Set(names.map(n=>cls[n][0]))].sort();
  names.sort((a,b)=>{const x=cls[a],y=cls[b];return P.indexOf(x[0])-P.indexOf(y[0])||String(x[1]).localeCompare(y[1])||a.localeCompare(b)});
  const DL=[];names.forEach(n=>{const k=cls[n][1]+'|'+cls[n][0];if(!DL.some(d=>d[2]==k))DL.push([cls[n][1],P.indexOf(cls[n][0]),k])});
- const C=names.map(n=>{const c=cls[n];return[n,DL.findIndex(d=>d[2]==c[1]+'|'+c[0]),c[2],c[3],c[4],c[5]]}),ci=Object.fromEntries(names.map((n,i)=>[n,i]));
+ const C=names.map(n=>{const c=cls[n];return[n,DL.findIndex(d=>d[2]==c[1]+'|'+c[0]),c[2],CFG.cluster,c[4],c[5]]}),ci=Object.fromEntries(names.map((n,i)=>[n,i]));
  const Y=[...new Set(recs.map(r=>r[5].slice(0,10)))].sort();
  const R=recs.filter(r=>r[0] in ci).map(r=>{const i=ci[r[0]],[s,g]=stat(r[1],r[2]),k=String(r[3]||'').replace(/\D/g,''),c=C[i];let f=0;
   if(r[1]==='Done'){if(k.length!==13)f|=64;else{if(PM[k[0]]!==P[DL[c[1]][1]])f|=2;if(k[12]%2)f|=4}const p=r[8];if(!p)f|=16;else if(p<3)f|=32}
@@ -104,12 +109,12 @@ const OUT=['Gave CNIC','Refused','Not available','Moved / not found','Other'],OC
 const ST=['Correct','Incorrect','Not yet reviewed'],SC=['#38e8ff','#ff5c86','#5b6590'];
 const RS=['No usable card photo','Blurry photo','Name mismatch','Wrong number'];
 const PK=[[61.6,25.1],[63.5,25.3],[66.7,25.4],[67.2,24.8],[68,23.8],[69.6,24.2],[70.2,25.7],[71,27.8],[72.9,29],[74.6,31],[74.7,32.4],[75.4,32.7],[74.5,34],[75.5,35],[76.5,35.8],[77.8,35.5],[75.2,37],[73.8,36.9],[71.5,36.9],[71.2,36],[71.5,34.9],[71.1,34.1],[69.9,33.1],[69.3,31.9],[68,31.7],[66.4,30.9],[66.3,29.8],[64.1,29.4],[61.6,29.5],[60.9,29.8],[61.6,27.2],[63.2,26.6]];
-const KD=[['cov','Respondent coverage','entries of listed respondents',1],['col','CNIC collection rate','CNICs of entries',1],['ref','Refusal rate','refusals of entries (lower is better)',0],['acc','CNIC accuracy','correct of reviewed CNICs',1],['rev','Review completion','reviewed of collected CNICs',1]];
+const KD=[['cov','Respondent coverage','target respondents',1],['col','CNIC collection rate','CNICs of entries',1],['ref','Refusal rate','refusals of entries (lower is better)',0],['acc','CNIC accuracy','correct of reviewed CNICs',1],['rev','Review completion','reviewed of collected CNICs',1]];
 const $=id=>document.getElementById(id),fmt=n=>n.toLocaleString('en-US');
-let S={p:-1,d:-1,c:-1,a:'',o:-1,s:-1,f:0,t:D.Y.length-1,u:true,q:0},T={cov:100,col:85,ref:10,acc:95,rev:100},cur={cs:[]};
+let S={p:-1,d:-1,c:-1,a:'',o:-1,s:-1,f:0,t:D.Y.length-1,u:true,q:0,g:0},T={cov:100,col:85,ref:10,acc:95,rev:100},cur={cs:[]};
 try{Object.assign(T,JSON.parse(localStorage.getItem('cnicT')||'{}'))}catch(e){}
 const dl=y=>new Date(y+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-const cOK=i=>{const c=D.C[i];return(S.p<0||D.D[c[1]][1]==S.p)&&(S.d<0||c[1]==S.d)&&(S.c<0||i==S.c)&&(!S.a||c[2]==S.a)};
+const cOK=i=>{const c=D.C[i];return(S.p<0||D.D[c[1]][1]==S.p)&&(S.d<0||c[1]==S.d)&&(S.c<0||i==S.c)&&(!S.a||c[2]==S.a)&&(!S.gs||S.gs.has(i))};
 const oOK=r=>(!S.u||r[8])&&(S.o<0||r[1]==S.o)&&(S.s<0||r[2]==S.s);
 const opt=(a,all)=>`<option value="-1">${all}</option>`+a.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
 const ch={};['sk','hm','rk','tl','rn'].forEach(k=>ch[k]=echarts.init($(k)));
@@ -125,7 +130,7 @@ function sync(){
  $('fp').innerHTML=opt(pr,'All provinces');$('fd').innerHTML=opt(ds,'All districts');$('fc').innerHTML=opt(cl,'All clusters');
  $('fo').innerHTML=opt(OUT.map((o,i)=>[i,o]),'All outcomes');$('fs').innerHTML=opt(ST.map((o,i)=>[i,o]),'All review results');
  const dy=D.Y.map((y,i)=>[i,dl(y)]);$('ff').innerHTML=opt(dy,dl(D.Y[0])).replace('value="-1"','value="0"');$('ft').innerHTML=dy.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
- $('fp').value=S.p;$('fd').value=S.d;$('fc').value=S.c;$('fa').value=S.a;$('fo').value=S.o;$('fs').value=S.s;$('ff').value=S.f;$('ft').value=S.t;$('uq').checked=S.u;
+ $('fp').value=S.p;$('fd').value=S.d;$('fc').value=S.c;$('fa').value=S.a;$('fo').value=S.o;$('fs').value=S.s;$('ff').value=S.f;$('ft').value=S.t;$('uq').checked=S.u;$('fg').value=S.g;
  draw();
 }
 const num=e=>+e.target.value;
@@ -133,13 +138,13 @@ $('fp').onchange=e=>{S.p=num(e);S.d=-1;S.c=-1;sync()};$('fd').onchange=e=>{S.d=n
 $('fc').onchange=e=>{S.c=num(e);if(S.c>=0){S.d=D.C[S.c][1];S.p=D.D[S.d][1]}sync()};
 $('fa').onchange=e=>{S.a=e.target.value;sync()};$('fo').onchange=e=>{S.o=num(e);sync()};$('fs').onchange=e=>{S.s=num(e);sync()};
 $('ff').onchange=e=>{S.f=num(e);if(S.t<S.f)S.t=S.f;sync()};$('ft').onchange=e=>{S.t=num(e);if(S.f>S.t)S.f=S.t;sync()};
-$('rs').onclick=()=>{S={p:-1,d:-1,c:-1,a:'',o:-1,s:-1,f:0,t:D.Y.length-1,u:S.u,q:0};sync()};
+$('rs').onclick=()=>{S={p:-1,d:-1,c:-1,a:'',o:-1,s:-1,f:0,t:D.Y.length-1,u:S.u,q:0,g:0};sync()};
 const pick=i=>{if(i==null)return;if(S.c===i)S.c=-1;else{S.c=i;S.d=D.C[i][1];S.p=D.D[S.d][1]}sync()};
 function draw(){
  const inD=r=>r[4]>=S.f&&r[4]<=S.t,pc=D.C.map(()=>({n:0,c:[0,0,0,0,0],s:[0,0,0]}));
  D.R.filter(r=>oOK(r)&&inD(r)).forEach(r=>{const p=pc[r[0]];p.n++;p.c[r[1]]++;if(r[2]>=0)p.s[r[2]]++});
- const cs=D.C.map((c,i)=>i).filter(cOK);cur.cs=cs;
- const L=cs.reduce((a,i)=>a+D.C[i][3],0),n=cs.reduce((a,i)=>a+pc[i].n,0);
+ S.gs=S.g?new Set(D.C.map((c,i)=>i).filter(i=>{const v=pc[i].c[0]/CFG.cluster;return S.g==1?v<.5:S.g==2?v>=.5&&v<1:v>=1})):null;const cs=D.C.map((c,i)=>i).filter(cOK);cur.cs=cs;
+ const dset=new Set(cs.map(i=>D.C[i][1])),L=S.c>=0||S.a||S.g?cs.length*CFG.cluster:(S.p<0&&S.d<0)?CFG.project:dset.size*CFG.district,n=cs.reduce((a,i)=>a+pc[i].n,0);
  const c=[0,0,0,0,0],s=[0,0,0];cs.forEach(i=>{pc[i].c.forEach((v,k)=>c[k]+=v);pc[i].s.forEach((v,k)=>s[k]+=v)});
  const val={cov:[n,L],col:[c[0],n],ref:[c[1],n],acc:[s[0],s[0]+s[1]],rev:[s[0]+s[1],c[0]]};
  KD.forEach(([k,,sub,hi])=>{const[a,b]=val[k],v=b?a/b*100:0,g=hi?v-T[k]:T[k]-v,co=!b?'#5b6590':g>=0?'#2de2b0':g>-10?'#ffb547':'#ff5c86';
@@ -163,15 +168,15 @@ function draw(){
   visualMap:{show:false,min:0,max:100,inRange:{color:['#0d1431','#25368a','#38e8ff','#2de2b0']}},
   series:[{type:'heatmap',data:hd,label:{show:true,fontSize:10,color:'#fff',formatter:q=>q.value[3]||''},itemStyle:{borderColor:'#060913',borderWidth:2,borderRadius:3}}]},true);
  const rk=cs.map(i=>({i,v:yl(i)})).sort((a,b)=>b.v-a.v);
- ch.rk.setOption({...base,grid:{left:190,right:56,top:22,bottom:6},tooltip:{...base.tooltip,formatter:q=>`<b>${D.C[q.data.i][0]}</b><br>${pc[q.data.i].c[0]} of ${D.C[q.data.i][3]} listed (${q.value}%)`},
+ ch.rk.setOption({...base,grid:{left:190,right:56,top:22,bottom:6},tooltip:{...base.tooltip,formatter:q=>`<b>${D.C[q.data.i][0]}</b><br>${pc[q.data.i].c[0]} of ${D.C[q.data.i][3]} target (${q.value}%)`},
   xAxis:{type:'value',...ax,max:v=>Math.max(100,Math.ceil(v.max/10)*10),axisLabel:{color:'#8f9abf',formatter:'{value}%'}},
   yAxis:{type:'category',inverse:true,data:rk.map(x=>D.C[x.i][0]),axisLine:ax.axisLine,axisTick:{show:false},axisLabel:{width:180,overflow:'truncate',fontSize:10,color:'#aab4d8'}},
   series:[{type:'bar',barWidth:11,data:rk.map(x=>({i:x.i,value:+x.v.toFixed(1),itemStyle:{color:col(x.v),borderRadius:[0,6,6,0]}})),label:{show:true,position:'right',color:'#aab4d8',fontSize:10,formatter:q=>`${pc[q.data.i].c[0]}/${D.C[q.data.i][3]}`},
-   markLine:{symbol:'none',silent:true,lineStyle:{color:'#fff',type:'dashed'},label:{formatter:'target '+tg.toFixed(0)+'%',color:'#fff',fontSize:10},data:[{xAxis:+tg.toFixed(1)}]}}]},true);
+   markLine:{symbol:'none',silent:true,lineStyle:{color:'#fff',type:'dashed'},label:{color:'#fff',fontSize:10},data:[{xAxis:100,label:{formatter:'target '+CFG.cluster}},{xAxis:+tg.toFixed(1),label:{formatter:'expected '+tg.toFixed(0)+'%'}}]}}]},true);
  /* timeline + reasons */
  const dm=D.Y.map(()=>[0,0,0,0,0]),rs=[0,0,0,0];
  D.R.forEach(r=>{if(!cs.includes(r[0])||!oOK(r))return;dm[r[4]][r[1]]++;if(inD(r)&&r[2]==1)rs[r[3]]++});
- let cum=0;const cl=dm.map(d=>cum+=d[0]),tt=Math.round(L*tg/100);
+ let cum=0;const cl=dm.map(d=>cum+=d[0]),tt=L;
  ch.tl.setOption({...base,tooltip:{...base.tooltip,trigger:'axis'},legend:{top:0,textStyle:{color:'#aab4d8'},itemWidth:10,itemHeight:10},grid:{left:44,right:24,top:36,bottom:24},
   xAxis:{type:'category',data:D.Y.map(dl),...ax},yAxis:{type:'value',...ax,max:v=>Math.max(tt*1.1,v.max)},
   series:[...OUT.map((o,i)=>({name:o,type:'bar',stack:'d',barWidth:'38%',data:dm.map(d=>d[i]),itemStyle:{color:OC[i],opacity:.75}})),
@@ -179,11 +184,20 @@ function draw(){
    markLine:{symbol:'none',silent:true,lineStyle:{color:'#fff',type:'dashed'},label:{formatter:'CNIC target '+fmt(tt),color:'#fff',position:'insideEndTop'},data:[{yAxis:tt}]}}]},true);
  ch.rn.setOption({...base,grid:{left:130,right:34,top:10,bottom:10},xAxis:{type:'value',...ax,show:false},yAxis:{type:'category',inverse:true,data:RS,axisLine:ax.axisLine,axisTick:{show:false},axisLabel:{color:'#aab4d8',width:120,overflow:'truncate'}},
   series:[{type:'bar',barWidth:16,data:rs,itemStyle:{color:'#ff5c86',borderRadius:[0,6,6,0]},label:{show:true,position:'right',color:'#e8edff'}}]},true);
- dq(inD);
+ hero(pc,L,c,n);dq(inD);
 }
 ch.rk.on('click',q=>pick(q.data.i));ch.hm.on('click',q=>pick(cur.cs[q.value[1]]));
 ch.sk.on('click',q=>{if(q.dataType!=='node')return;const k=OUT.indexOf(q.name),j=ST.indexOf(q.name);if(k>=0)S.o=S.o===k?-1:k;else if(j>=0)S.s=S.s===j?-1:j;sync()});
 addEventListener('resize',()=>Object.values(ch).forEach(c=>c.resize()));
+function hero(pc,L,c,n){
+ const dn=c[0];$('hv').textContent=fmt(dn);$('ht').textContent=fmt(L);$('hb').style.width=Math.min(100,L?dn/L*100:0)+'%';
+ $('hp').textContent=`${fmt(n)} ${S.u?'respondents':'entries'} reached, ${L?(dn/L*100).toFixed(1):0}% of target, ${fmt(Math.max(0,L-dn))} CNICs to go`;
+ $('hd').innerHTML=D.D.map((d,j)=>{if(S.p>=0&&d[1]!=S.p)return'';const ci=D.C.map((x,i)=>i).filter(i=>D.C[i][1]==j),done=ci.reduce((a,i)=>a+pc[i].c[0],0),rep=ci.filter(i=>pc[i].n>0).length,p=done/CFG.district*100,k=p>=100?'#2de2b0':p>=60?'#38e8ff':p>=30?'#ffb547':'#ff5c86';
+  return`<button data-j="${j}" class="chip tilt text-left p-2 border" style="border-color:${S.d===j?'#38e8ff':'var(--line)'}"><div class="flex justify-between text-xs"><b>${d[0]}</b><span style="color:var(--mute)">${rep}/${CFG.clustersPerDistrict} clusters</span></div><div class="num text-lg font-bold">${fmt(done)}<span class="text-xs font-normal" style="color:var(--mute)"> / ${CFG.district}</span></div><div class="h-1.5 rounded-full mt-1" style="background:rgba(130,155,255,.15)"><div class="h-full rounded-full" style="width:${Math.min(100,p)}%;background:${k};box-shadow:0 0 10px ${k}"></div></div></button>`}).join('');
+}
+$('hd').onclick=e=>{const b=e.target.closest('button');if(b){const j=+b.dataset.j;if(S.d===j)S.d=-1;else{S.d=j;S.p=D.D[j][1]}S.c=-1;sync()}};
+$('fg').onchange=e=>{S.g=+e.target.value;sync()};
+
 const FL=[[1,'Repeated CNIC'],[2,'Province mismatch'],[4,'Male format'],[8,'GPS over 2 km'],[16,'No photos'],[32,'One side only'],[64,'Bad length']],bc=n=>n.toString(2).replace(/0/g,'').length;
 function dq(inD){
  const all=D.R.filter(r=>cOK(r[0])&&inD(r)),uq=all.filter(r=>r[8]).length,sc=all.filter(oOK),dn=sc.filter(r=>r[1]==0).length;
@@ -205,7 +219,7 @@ async function load(file){
   rows.forEach(r=>{const n=r['Treatment cluster'];if(n&&!cls[n])cls[n]=[r.Province,r.District,r.cl_area,35,null,null]});
   const recs=rows.filter(r=>r['Treatment cluster']&&r.r_result&&r._submission__submission_time).map(r=>[r['Treatment cluster'],r.r_result,r.CNIC_review_note,cn?r[cn]:'',r.resp_no,iso(r._submission__submission_time),r.resp_lat,r.resp_lon,(r['Front side_URL']?1:0)+(r['Back side_URL']?2:0)]);
   if(!recs.length)throw new Error('no usable rows found');
-  D=ingest(recs,cls);S={p:-1,d:-1,c:-1,a:'',o:-1,s:-1,f:0,t:D.Y.length-1,u:S.u,q:0};sync();clearInterval(poll);$('msg').textContent=`Loaded ${fmt(recs.length)} entries from ${file.name} (live sync paused)`;
+  D=ingest(recs,cls);S={p:-1,d:-1,c:-1,a:'',o:-1,s:-1,f:0,t:D.Y.length-1,u:S.u,q:0,g:0};sync();clearInterval(poll);$('msg').textContent=`Loaded ${fmt(recs.length)} entries from ${file.name} (live sync paused)`;
  }catch(e){$('msg').textContent='Could not read the file: '+e.message}
 }
 $('fi').onchange=e=>e.target.files[0]&&load(e.target.files[0]);
@@ -229,7 +243,7 @@ function map3d(cs,pc,tg,col,yl){
    ed=new T3.LineSegments(new T3.EdgesGeometry(geo),new T3.LineBasicMaterial({color:0x38e8ff,transparent:true,opacity:.7}));
   land.rotation.x=ed.rotation.x=-Math.PI/2;s.add(land,ed);
   M={T3,r,s,cam,g,tp,yaw:0,pit:.95,R:15.5,bars:[],lbs:[],cyl:new T3.CylinderGeometry(.13,.13,1,16),ray:new T3.Raycaster(),mv:new T3.Vector2(9,9),hov:-1,drag:null,idle:0,vis:true,key:'',px:0,py:0};
-  M.tip=()=>{const i=M.hov;if(i<0){tp.style.display='none';return}const c=D.C[i],p=M.pc[i];tp.style.display='block';tp.innerHTML=`<b>${c[0]}</b><br>Entries ${p.n} · CNICs ${p.c[0]} of ${c[3]} listed<br>Yield ${M.yl(i).toFixed(1)}% vs ${M.tg.toFixed(1)}% target`};
+  M.tip=()=>{const i=M.hov;if(i<0){tp.style.display='none';return}const c=D.C[i],p=M.pc[i];tp.style.display='block';tp.innerHTML=`<b>${c[0]}</b><br>Entries ${p.n} · CNICs ${p.c[0]} of ${c[3]} target<br>Yield ${M.yl(i).toFixed(1)}% vs ${M.tg.toFixed(1)}% target`};
   d.addEventListener('pointerdown',e=>{M.drag={x:e.clientX,y:e.clientY,yaw:M.yaw,pit:M.pit,mv:0};d.setPointerCapture(e.pointerId);el.style.cursor='grabbing'});
   d.addEventListener('pointermove',e=>{const b=d.getBoundingClientRect();M.px=e.clientX-b.left;M.py=e.clientY-b.top;M.mv.set(M.px/b.width*2-1,-M.py/b.height*2+1);M.idle=performance.now();
    if(M.drag){const dx=e.clientX-M.drag.x,dy=e.clientY-M.drag.y;M.drag.mv=Math.max(M.drag.mv,Math.abs(dx)+Math.abs(dy));M.yaw=M.drag.yaw-dx*.006;M.pit=Math.max(.35,Math.min(1.45,M.drag.pit+dy*.005))}});
@@ -257,14 +271,14 @@ document.addEventListener('pointerout',e=>{const c=e.target.closest&&e.target.cl
 try{pass=sessionStorage.getItem('pc')||''}catch(e){}
 async function live(){
  try{
-  const r=await fetch('/api/data',{headers:pass?{'x-passcode':pass}:{}});
+  const r=await fetch('/api/data?t='+Date.now(),{cache:'no-store',headers:pass?{'x-passcode':pass}:{}});
   if(r.status===401){pass=prompt('Dashboard passcode')||'';try{sessionStorage.setItem('pc',pass)}catch(e){}return pass?live():($('msg').textContent='Passcode required. Click Refresh now to enter it.')}
   const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'HTTP '+r.status);if(!j.recs.length)throw new Error('Kobo returned no respondent rows yet');
   const end=S.t>=D.Y.length-1;D=ingest(j.recs,j.cls);if(end||S.t>=D.Y.length)S.t=D.Y.length-1;if(S.f>=D.Y.length)S.f=0;if(S.c>=D.C.length)S.c=-1;
-  sync();$('msg').innerHTML=`<span class="inline-block w-2 h-2 rounded-full bg-neon-mint animate-pulse mr-1.5"></span>Live from Kobo · ${fmt(j.recs.length)} entries · synced ${new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}`;
+  sync();const m=j.meta||{};$('msg').innerHTML=`<span class="inline-block w-2 h-2 rounded-full bg-neon-mint animate-pulse mr-1.5"></span>Live: Kobo has ${fmt(m.koboTotal??m.subs??0)} submissions, ${fmt(j.recs.length)} respondent rows, newest ${(m.latest||'').replace('T',' ').slice(0,16)}, synced ${new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}${m.skipped?` <b style="color:var(--amber)">(${m.skipped} rows skipped: no cluster or time)</b>`:''}`;
  }catch(e){$('msg').textContent='Live sync failed: '+e.message+'. You can still drop an export file on this page.'}
 }
 $('rf').onclick=()=>live();
 document.querySelectorAll('.wrap>section').forEach((s,i)=>{s.style.animationDelay=i*80+'ms';s.classList.add('animate-rise')});
-live();poll=setInterval(()=>{if(!document.hidden)live()},60000);
+live();poll=setInterval(()=>{if(!document.hidden)live()},CFG.pollSec*1000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)live()});
 </script></body></html>
